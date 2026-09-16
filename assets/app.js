@@ -1,4 +1,22 @@
 (() => {
+  // Google Analytics 4: 自由記述本文は送信しない。
+  const GA_MEASUREMENT_ID = 'G-P8D3ME4ZJ1';
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  window.gtag('config', GA_MEASUREMENT_ID, {
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
+
+  if (!document.querySelector(`script[data-kokoro-ga="${GA_MEASUREMENT_ID}"]`)) {
+    const gaScript = document.createElement('script');
+    gaScript.async = true;
+    gaScript.src = `https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`;
+    gaScript.dataset.kokoroGa = GA_MEASUREMENT_ID;
+    document.head.appendChild(gaScript);
+  }
+
   const textarea = document.querySelector('[data-listen-text]');
   if (!textarea) return;
 
@@ -18,7 +36,7 @@
     { value: 'unsure', label: '自分でもまだ分からない' }
   ];
 
-  // 計測を追加しても、本文そのものはアクセス解析へ送らない。
+  // 本文そのものはアクセス解析へ送らない。
   const track = (eventName, params = {}) => {
     if (typeof window.gtag === 'function') {
       window.gtag('event', eventName, params);
