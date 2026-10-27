@@ -1,6 +1,8 @@
 (() => {
   // Google Analytics 4: 自由記述本文は送信しない。
   const GA_MEASUREMENT_ID = 'G-P8D3ME4ZJ1';
+  // 改善用本文の送信先は、セキュリティ審査済みAPIを実装するまで固定で無効。
+  const FEEDBACK_ENDPOINT = '';
   window.dataLayer = window.dataLayer || [];
   window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
   window.gtag('js', new Date());
@@ -149,6 +151,18 @@
   textarea.addEventListener('input', update);
   update();
 
+  // 戻る操作のBFCacheを含め、ページを離れた後に本文を残しにくくする。
+  window.addEventListener('pagehide', () => {
+    textarea.value = '';
+    if (count) count.textContent = '0文字';
+  });
+  window.addEventListener('pageshow', (event) => {
+    if (event.persisted) {
+      textarea.value = '';
+      update();
+    }
+  });
+
   buttons.forEach((button) => {
     button.addEventListener('click', () => {
       const goal = getGoal();
@@ -247,7 +261,7 @@
         }
 
         // 本文の送信先はまだ未設定。安全な保存先を用意するまで実データは送らない。
-        const endpoint = window.KOKORO_FEEDBACK_ENDPOINT;
+        const endpoint = FEEDBACK_ENDPOINT;
         if (!endpoint) {
           if (status) {
             status.textContent = '現在、匿名提供機能は準備中です。会話内容は送信されていません。';
@@ -270,6 +284,9 @@
           const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'omit',
+            referrerPolicy: 'no-referrer',
+            cache: 'no-store',
             body: JSON.stringify(payload)
           });
           if (!response.ok) throw new Error('submit failed');
@@ -294,7 +311,6 @@
   window.KokoroListening = {
     getGoal,
     getGoalLabel: () => goalLabel(getGoal()),
-    getConversationText: () => textarea.value,
     completeConversation: ({ tone = 'polite' } = {}) => {
       const panel = buildEndPanel(tone);
       if (panel) {
