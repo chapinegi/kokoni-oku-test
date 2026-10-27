@@ -35,7 +35,17 @@ window.KokoroListening.completeConversation({ tone: 'polite' });
 // または tone: 'casual'
 ```
 
-本文の匿名提供先は未設定です。`window.KOKORO_FEEDBACK_ENDPOINT` に安全な送信先を設定するまで、会話本文は送信されません。
+本文の匿名提供先はソース内で固定無効です。セキュリティ審査済みの送信APIを実装し、コードレビューで明示的に有効化するまで会話本文は送信されません。
+
+## セキュリティ
+
+- 自由記述本文はGA4へ送信しない
+- 現在は本文をサーバー保存しない
+- CSPで外部リソースの読み込み先を制限
+- 入力欄の自動補完・自動修正・スペルチェックを無効化
+- ページ離脱時に本文を消去し、BFCacheでの残留を抑制
+- 改善用本文の送信先はソース上で固定無効
+- 詳細: [docs/SECURITY_SPEC_V1.md](docs/SECURITY_SPEC_V1.md)
 
 ## Pages 設定
 
