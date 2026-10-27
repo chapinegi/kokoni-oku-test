@@ -1,0 +1,74 @@
+name: Security guard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  security-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Block PHP runtime files
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f -name '*.php' -not -path './.git/*' -print -quit | grep -q .; then
+            echo "::error::PHP files are not allowed in this project."
+            exit 1
+          fi
+
+      - name: Block tracked env files and obvious secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          env_files="$(git ls-files | grep -E '(^|/)\.env($|\.)' | grep -vE '(^|/)\.env\.example$' || true)"
+          if [ -n "$env_files" ]; then
+            echo "::error::Tracked .env file detected:"
+            echo "$env_files"
+            exit 1
+          fi
+
+          if grep -R -nE '(sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----)' \
+            --exclude-dir=.git .; then
+            echo "::error::Possible secret detected."
+            exit 1
+          fi
+
+      - name: Protect sensitive-text safeguards
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -R -n 'window\.KOKORO_FEEDBACK_ENDPOINT' assets; then
+            echo "::error::Runtime-configurable feedback endpoint is forbidden."
+            exit 1
+          fi
+          grep -q "const FEEDBACK_ENDPOINT = '';" assets/app.js || {
+            echo "::error::Feedback endpoint must remain disabled until security review."
+            exit 1
+          }
+
+      - name: Verify browser hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in *.html; do
+            grep -q 'Content-Security-Policy' "$file" || {
+              echo "::error file=$file::CSP meta is missing."
+              exit 1
+            }
+          done
+
+          for file in index.html guchi-wo-kiite-hoshii.html tada-kiite-hoshii.html yoru-darekato-hanashitai.html shigoto-no-guchi.html darenimo-ienai-guchi.html; do
+            grep -q 'data-listen-text autocomplete="off"' "$file" || {
+              echo "::error file=$file::Sensitive textarea hardening is missing."
+              exit 1
+            }
+          done
